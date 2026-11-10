@@ -65,7 +65,12 @@ export default function App() {
     setIsGenerating(true);
     setError(null);
     try {
-      await drawWatermarkCanvas(canvasRef.current, inputs, RESOURCES);
+      // A user-uploaded signature logo replaces the bundled one; when absent
+      // (`null` / `undefined` for legacy stored inputs) fall back to the default.
+      await drawWatermarkCanvas(canvasRef.current, inputs, {
+        ...RESOURCES,
+        signatureLogoUrl: inputs.signatureLogo ?? RESOURCES.signatureLogoUrl,
+      });
     } catch (err) {
       console.error("Failed to generate watermark preview:", err);
       const message =

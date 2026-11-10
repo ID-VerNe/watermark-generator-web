@@ -7,9 +7,10 @@
 ## ✨ 功能
 
 - **水印字段**：City、Location / District、Camera、Lens，支持自动补全（Autocomplete）
-- **Canvas 渲染**：`SHOT ON <相机> & <镜头>` 右下角、签名 Logo、位置文字 + 位置图标、自定义左 Logo
+- **Canvas 渲染**：`SHOT ON <相机> & <镜头>` 右下角、签名 Logo（可自定义）、位置文字 + 位置图标、自定义左 Logo
 - **自定义字体**：内置 Misans 字体，通过 `FontFace` 注册为 `CustomWatermarkFont`
 - **自定义左 Logo**：本地上传图片，可调宽度，可随时移除
+- **自定义右 Logo（签名）**：本地上传图片替换内置签名 Logo，宽度由 `Signature Logo Width` 统一控制，可随时移除还原默认
 - **位置显示开关**：一键隐藏 / 显示左下角位置文字与图标
 - **文件名定制**：勾选哪些字段参与生成文件名，非法字符自动替换为 `_`
 - **数据管理**：城市 / 位置 / 相机 / 镜头词库支持导出 `.json` 与导入 `.json`
@@ -71,7 +72,7 @@ watermark/
 └── public/
     ├── misans.ttf           # 水印字体
     ├── location_logo.png    # 位置图标
-    ├── signature_logo.png   # 签名 Logo
+    ├── signature_logo.png   # 签名 Logo（内置默认，可被自定义图替换）
     └── logo.png             # 站点图标
 ```
 
