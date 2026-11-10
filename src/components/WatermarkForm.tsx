@@ -160,6 +160,32 @@ export default function WatermarkForm({
     }));
   };
 
+  const handleSignatureLogoUpload = (
+    event: React.ChangeEvent<HTMLInputElement>,
+  ) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (loadEvent) => {
+      const dataUrl = loadEvent.target?.result;
+      typeof dataUrl === "string" &&
+        setInputs((prev) => ({
+          ...prev,
+          signatureLogo: dataUrl,
+        }));
+    };
+    reader.readAsDataURL(file);
+    event.target.value = "";
+  };
+
+  const handleRemoveSignatureLogo = () => {
+    setInputs((prev) => ({
+      ...prev,
+      signatureLogo: null,
+    }));
+  };
+
   const cityKey = inputs.city.toUpperCase();
   const cityLocations = libraries.locations[cityKey] || [];
 
@@ -234,7 +260,7 @@ export default function WatermarkForm({
               className={INPUT_CLASS}
             />
           </div>
-          <div className="sm:col-span-2 lg:col-span-3 grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div className="sm:col-span-2 lg:col-span-3 grid grid-cols-1 md:grid-cols-3 gap-6">
             <div>
               <label className={`${LABEL_CLASS} mb-2`}>Left Logo (Custom)</label>
               <div className="flex items-center space-x-4">
@@ -279,6 +305,34 @@ export default function WatermarkForm({
                   />
                 </div>
               )}
+            </div>
+            <div>
+              <label className={`${LABEL_CLASS} mb-2`}>Right Logo (Custom)</label>
+              <div className="flex items-center space-x-4">
+                <label className="cursor-pointer bg-white dark:bg-gray-700 py-2 px-3 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm text-sm leading-4 font-medium text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
+                  <span>Upload Logo</span>
+                  <input
+                    type="file"
+                    className="hidden"
+                    accept="image/*"
+                    onChange={handleSignatureLogoUpload}
+                  />
+                </label>
+                {inputs.signatureLogo && (
+                  <div className="flex items-center space-x-2">
+                    <span className="text-sm text-green-600 dark:text-green-400">
+                      Logo Set
+                    </span>
+                    <button
+                      type="button"
+                      onClick={handleRemoveSignatureLogo}
+                      className="text-sm text-red-600 dark:text-red-400 hover:text-red-800 dark:hover:text-red-300"
+                    >
+                      Remove
+                    </button>
+                  </div>
+                )}
+              </div>
             </div>
             <div className="flex items-center h-full pt-6">
               <input

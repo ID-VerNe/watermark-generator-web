@@ -8,6 +8,7 @@ export const DEFAULT_INPUTS: WatermarkInputs = {
   lens: "SIGMA 24-70MM F2.8 DG DN II ART",
   fontSize: 40,
   signatureLogoWidth: 300,
+  signatureLogo: null,
   outputDir: "",
   leftLogo: null,
   leftLogoWidth: 300,

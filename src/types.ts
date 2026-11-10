@@ -6,6 +6,8 @@ export interface WatermarkInputs {
   lens: string;
   fontSize: number;
   signatureLogoWidth: number;
+  /** Custom right/signature logo (data URL), or null to use the bundled default. */
+  signatureLogo: string | null;
   outputDir: string;
   leftLogo: string | null;
   leftLogoWidth: number;
