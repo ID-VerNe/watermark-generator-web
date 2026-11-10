@@ -1,0 +1,54 @@
+name: ci
+
+# 跑的是仓库里同一份清单（scripts/gates.json），顺序与本机一致。
+# support 档（PR 正文校验）需要 GitHub 上下文，只能在本机无 PR 时 SKIP，所以不进 ci 档。
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+    # 默认类型是 opened/synchronize/reopened，**不含 edited**。support 档检查的正是
+    # PR 正文，少了 edited 就能「先推绿、后改正文」绕过门禁，绿会一直停在旧正文上。
+    types: [opened, synchronize, reopened, edited]
+  workflow_dispatch:
+
+# 同一分支 / 同一 PR 只保留最新一轮：新推送取消上一轮未完成的运行，省额度也避免旧结论覆盖。
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+# check_pr_body.py 用 gh 读 PR 评论；GITHUB_TOKEN 默认没有 pull-requests 读权限，
+# 不显式声明会报 "Resource not accessible by integration"。
+permissions:
+  contents: read
+  pull-requests: read
+
+jobs:
+  gates:
+    runs-on: ubuntu-latest
+    steps:
+      # 固定到 commit SHA（行尾注版本），防 tag 被移动后换了代码。
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          # check_no_vendored.py 要读 git ls-files，需要完整历史以外的东西即可；
+          # 但 fetch-depth=0 能让 file 大小检查更稳，成本也低
+          fetch-depth: 0
+
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: "3.12"
+
+      - name: 门禁清单
+        run: python scripts/run_gates.py --list
+
+      - name: 跑门禁
+        run: python scripts/run_gates.py ci
+
+      # support 档：需要 PR 上下文（读 GITHUB_EVENT_PATH 里的正文与改动文件），
+      # 本地没有 PR 时脚本自己 SKIP，所以不放进 ci 档。
+      # GH_TOKEN 供 check_pr_body.py 用 gh 读 PR 评论；取不到评论会退出 2，不许报绿。
+      - name: PR 正文分段与敏感信息（support 档）
+        if: github.event_name == 'pull_request'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: python scripts/run_gates.py support

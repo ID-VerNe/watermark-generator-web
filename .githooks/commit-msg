@@ -1,0 +1,73 @@
+#!/bin/sh
+# 拦 commit message 格式、Co-Authored-By 与敏感信息。
+# 规则见 AGENTS.md §5 / docs/contributing/PR_GUIDE.md「标题与 commit」。
+set -e
+
+MSG_FILE="$1"
+FIRST_LINE=$(head -n 1 "$MSG_FILE")
+
+# 放行：merge / revert / 空行开头的纯注释提交
+case "$FIRST_LINE" in
+  "Merge "*|"Revert "*|"revert:"*)
+    exit 0
+    ;;
+esac
+
+# 禁止 Co-Authored-By（含中文冒号变体）
+if grep -qiE '^[[:space:]]*co-authored-by[[:space:]]*:' "$MSG_FILE"; then
+  echo "[commit-msg] 拒绝：commit message 里不许出现 Co-Authored-By" >&2
+  exit 1
+fi
+
+# 首行格式：type(scope): 摘要（issue #NN）
+#   type ∈ feat|fix|docs|style|refactor|perf|test|chore
+if printf '%s' "$FIRST_LINE" | grep -qiE '^(feat|fix|docs|style|refactor|perf|test|chore)(\([a-z0-9._-]+\))?: .+'; then
+  :
+else
+  echo "[commit-msg] 拒绝：首行格式不对。" >&2
+  echo "             应为  type(scope): 中文摘要（issue #NN）" >&2
+  echo "             type ∈ feat|fix|docs|style|refactor|perf|test|chore" >&2
+  echo "             实际首行：$FIRST_LINE" >&2
+  exit 1
+fi
+
+# 非 bootstrap 提交必须带 issue 号
+case "$FIRST_LINE" in
+  *"issue #"*|*"#"[0-9]*) : ;;
+  *)
+    if [ "${ALLOW_NO_ISSUE:-0}" != "1" ]; then
+      echo "[commit-msg] 提醒：首行没带 issue 号。" >&2
+      echo "             docs/contributing/PR_GUIDE.md 要求分支 / 标题 / commit 三处都带 issue 号。" >&2
+      echo "             确实不需要（如 bootstrap、仓库卫生）时：" >&2
+      echo "             ALLOW_NO_ISSUE=1 git commit ..." >&2
+      exit 1
+    fi
+    ;;
+esac
+
+# 解释器解析收敛到共享探针（issue #205）：本文件不再自带查找逻辑，策略改动只改
+# scripts/resolve_python.sh 一处。探针为空 = PATH 里既无 python 也无 python3，
+# 缺解释器即拒绝——不允许「静默跳过敏感扫描」（#243 定的策略，这里换唯一实现）。
+if ! PYTHON="$(sh scripts/resolve_python.sh)"; then
+  echo "[commit-msg] 拒绝：找不到 python（python3 也没有）。" >&2
+  echo "             本仓库的 commit message 敏感扫描依赖 Python 3；装好后重试。" >&2
+  exit 1
+fi
+
+# 首行长度上限 72 字符（中文按字符数近似：用 python 数）
+LEN=$("$PYTHON" -c "import sys;print(len(sys.argv[1]))" "$FIRST_LINE" 2>/dev/null || echo 0)
+if [ "$LEN" -gt 72 ] 2>/dev/null; then
+  echo "[commit-msg] 拒绝：首行 $LEN 字符，上限 72。" >&2
+  exit 1
+fi
+
+# commit message 的敏感值扫描（issue #134）：与 support 档 `check_commit_messages.py`
+# 同一套规则。钩子只是便利层，在写入 git 历史之前止损；最终判定由 support 档负责。
+# 上面已对 Merge / Revert 早退，这里不重复扫。
+if ! "$PYTHON" scripts/check_commit_messages.py --message-file "$MSG_FILE"; then
+  echo "[commit-msg] 拒绝：commit message 命中敏感信息（规则见 scripts/check_sensitive.py）。" >&2
+  echo "             改成占位符或公开值；确认误报见 docs/contributing/PR_GUIDE.md。" >&2
+  exit 1
+fi
+
+exit 0

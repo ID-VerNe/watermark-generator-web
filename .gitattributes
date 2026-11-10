@@ -1,0 +1,29 @@
+# 换行符归一。
+# 为什么必须显式写：Windows 上 core.autocrlf=true，检出时会把 LF 换成 CRLF，
+# 而带 shebang 的 shell 脚本（.githooks/*）一旦变成 CRLF 就会报
+#   /bin/sh^M: bad interpreter
+# 整个钩子静默失效。这是真实踩过的坑，所以钉死在仓库里而不是靠本机配置。
+
+* text=auto
+
+*.sh    text eol=lf
+*.py    text eol=lf
+*.yml   text eol=lf
+*.yaml  text eol=lf
+*.json  text eol=lf
+.gitattributes text eol=lf
+
+# git 钩子与构建脚本必须 LF
+.githooks/*  text eol=lf
+# 带 shebang 的脚本文件（resolved 解释器所在路径）在 Windows 上 core.autocrlf=true
+# 会把工作区检出成 CRLF 导致 `bad interpreter`，按路径钉死，别靠本机配置。
+*.cmd        text eol=crlf
+
+# 二进制：别做换行转换
+*.png   binary
+*.jpg   binary
+*.jpeg  binary
+*.gif   binary
+*.webp  binary
+*.woff2 binary
+*.ttf   binary

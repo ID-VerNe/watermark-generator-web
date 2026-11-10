@@ -1,0 +1,109 @@
+#!/bin/sh
+# push 前跑最便宜的一档门禁（static 分片）。
+#
+# 两条硬约束，都来自 issue #114 的真实故障：
+# 1. 退出码只由门禁结果决定，与输出能否写出去无关。调用方把本钩子接进提前关闭的
+#    管道（`... | head -n 1`、PowerShell `Select-Object -First 1`）或直接关掉 stdout 时，
+#    echo 的写失败曾让「门禁全绿」变成 exit 1（`echo: write error: Bad file descriptor`）；
+#    同理 run_gates.py 往已关闭的 stdout 写时以 120 退出，又被误读成「门禁红」。
+# 2. 诊断信息一律走 stderr；stdout 不再承载任何门禁内容，所以 stdout 被关闭或被消费
+#    都不影响结论。
+#
+# 墓碑（修之前必须红，修之后必须绿）：
+#   PowerShell：
+#     & "C:\Program Files\Git\usr\bin\bash.exe" -c 'printf "refs/heads/x 111 refs/heads/x 222\n" | ./.githooks/pre-push 1>&-; echo "hook_exit=$?"'
+#   MSYS bash：
+#     printf "refs/heads/x 111 refs/heads/x 222\n" | ./.githooks/pre-push | head -n 1; echo "hook_exit=${PIPESTATUS[1]}"
+#
+# 跳过：SKIP_GATES=1 git push —— 会打印醒目横幅，且不是静默绕过；双流都被关闭时
+# 横幅看不见，但这次绕过会由 audit_skip() 落到 git 的 common dir 内（issue #118）。
+
+# 输出管道被提前关闭时本 sh 会收到 SIGPIPE 直接退出（实测 141）。忽略它，
+# 让写失败退化成普通返回码，由 say() 吞掉，不参与结论。
+trap '' PIPE
+
+say() {
+  # stderr 也被关掉时只能丢弃提示；这不改变下面的退出码
+  printf '%s\n' "$*" >&2 || :
+}
+
+# SKIP_GATES 的审计落盘（issue #118）：横幅只对看得见终端的人有效，双流关闭时
+# 必须另留一份机器可读的记录。路径必须取 git 的 **common dir**，不能用 `--git-path`：
+# 本仓库所有改动都强制走 `git worktree`（AGENTS.md §2.7），`--git-path` 在 linked
+# worktree 下落在 `.git/worktrees/<name>/`，`git worktree remove --force` 会把审计
+# 记录一并删掉——那样这个功能在真实流程里等于不存在。common dir 是所有 worktree
+# 共用、且不被 worktree 清理影响的位置；文件在 git dir 内，不进版本库也不进工作区，
+# `git status` 不会因此变脏。
+# 审计是旁路：每一步失败都吞掉，绝不改变退出码（日志写不进去也必须能推）。
+audit_skip() {
+  # --path-format=absolute 需要 git ≥ 2.31；更老的 git 退回普通形式（主工作区返回
+  # 相对的 `.git`，而 pre-push 的 cwd 就是工作区根，仍然正确）。bare 仓 / 子模块
+  # （`.git` 是文件）下 common dir 由 git 自己解析，不在这里做特殊处理。
+  common_dir=$(git rev-parse --path-format=absolute --git-common-dir 2>/dev/null) ||
+    common_dir=$(git rev-parse --git-common-dir 2>/dev/null) || return 0
+  [ -n "$common_dir" ] || return 0
+  log_path="${common_dir%/}/skip-gates.log"
+  # 一行 TSV：ISO 时间 / 用户 / 分支 / HEAD 短 SHA / PR-或-CI 上下文
+  # 直接跑钩子（issue #118 的复现命令）时 PATH 里可能没有 Git 的 usr/bin，date 找不到；
+  # 退回 bash 内建的时间格式化（Git for Windows 的 sh 就是 bash），再不行才写 unknown-time。
+  ts=$(date -u '+%Y-%m-%dT%H:%M:%SZ' 2>/dev/null) ||
+    ts=$(TZ=UTC printf '%(%Y-%m-%dT%H:%M:%SZ)T' -1 2>/dev/null) || ts="unknown-time"
+  who=$(git config user.name 2>/dev/null)
+  [ -n "$who" ] || who=$(whoami 2>/dev/null) || who="unknown-user"
+  branch=$(git symbolic-ref --short -q HEAD 2>/dev/null)
+  [ -n "$branch" ] || branch="(detached)"
+  sha=$(git rev-parse --short HEAD 2>/dev/null)
+  [ -n "$sha" ] || sha="unknown-sha"
+  # push 时拿不到 PR 号，只认环境里明确给出的 CI/PR 信号；取不到写 n/a
+  context="n/a"
+  if [ -n "${GITHUB_EVENT_NAME:-}" ]; then
+    context="github:${GITHUB_EVENT_NAME}"
+  elif [ -n "${CI:-}" ]; then
+    context="ci"
+  fi
+  printf '%s\t%s\t%s\t%s\t%s\n' "$ts" "$who" "$branch" "$sha" "$context" >>"$log_path" 2>/dev/null || :
+}
+
+if [ "${SKIP_GATES:-0}" = "1" ]; then
+  say ""
+  say "############################################################"
+  say "# [pre-push] 警告：SKIP_GATES=1 —— 本次推送跳过了 static 门禁！"
+  say "# 这次 push 未经任何门禁校验。SKIP_GATES 只允许用于钩子自身故障；"
+  say "# 事后必须在 PR 正文说明原因，并附上手动执行"
+  say "#   python scripts/run_gates.py ci"
+  say "# 的原始输出。它不是「门禁红了赶时间」的通行证。"
+  say "############################################################"
+  say ""
+  # 双流关闭时横幅看不见，靠这一行留痕；写失败不影响 exit 0
+  audit_skip
+  exit 0
+fi
+
+say "[pre-push] 跑 static 门禁……"
+
+# 解释器与分片名都收敛（issue #205）：解释器走共享探针（找不到即拒绝，与 commit-msg
+# 同口径，不靠 shell 的「命令不存在」裸错）；跑哪档由 gates.json 的 prePush 标记决定，
+# 钩子里不再写死分片名，改名时这里不用跟着改。
+if ! PY="$(sh scripts/resolve_python.sh)"; then
+  say "[pre-push] 拒绝：找不到 python（python3 也没有）；门禁执行器需要 Python 3。"
+  exit 1
+fi
+
+# 先把门禁输出收进变量再回显：门禁自己的退出码是唯一结论来源，
+# 不受调用方如何消费本钩子输出影响。PYTHONUNBUFFERED 让 stdout/stderr 合并后
+# 仍按真实顺序落进变量，否则「红 N 条」这种 stderr 摘要会跑到 PASS 列表前面。
+gate_out=$(PYTHONUNBUFFERED=1 "$PY" scripts/run_gates.py ci --prepush 2>&1)
+gate_status=$?
+
+say "$gate_out"
+
+if [ "$gate_status" -ne 0 ]; then
+  say ""
+  say "[pre-push] 门禁红了（退出码 $gate_status），拒绝推送。"
+  say "           看上面门禁的原始输出。确实要跳过：SKIP_GATES=1 git push"
+  say "           （跳过必须在 PR 正文说明原因，并附手动跑门禁的原始输出）"
+  exit 1
+fi
+
+say "[pre-push] static 门禁全绿"
+exit 0
