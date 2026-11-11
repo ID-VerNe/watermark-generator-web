@@ -6,6 +6,11 @@
       "name": "static",
       "prePush": true,
       "why": "不碰设备、不碰工具链的最便宜一档：清单一致性、仓库卫生、文档链接与行号、Python 语法、敏感信息。红灯最先可见，pre-push 按本标记取档（分片名不写死在钩子里，issue #205）"
+    },
+    {
+      "name": "typecheck",
+      "prePush": true,
+      "why": "类型检查一档：需要 node_modules（先 `npm install`），故与「不碰工具链」的 static 分开。本机未装依赖时该条退 2（环境问题），据此与内容红分开"
     }
   ],
   "ci": [
@@ -53,6 +58,12 @@
       },
       "shard": "static",
       "why": "敏感信息门禁：配对 GUID 及其 hex/14 位去横线/4-4-4-2 重分组/Base64/URL 编码、序列号、内网 IP、私人路径、私有仓库标识、通用密钥形态。命中即阻断。公开示例值走脚本内 ALLOWLIST，只按「类别 + 精确值」放行，不做网段/通配；其余行内豁免必须带具体理由。--fix 才改写，--warn 只用于排查基线"
+    },
+    {
+      "name": "check_typescript.py",
+      "cmd": ["python", "scripts/check_typescript.py"],
+      "shard": "typecheck",
+      "why": "类型检查（tsc --noEmit）：esbuild 的 build 不做类型检查，类型契约缺陷合入前不可见（issue #3 的 fontUrl 就是这样漏的，issue #11 立此门禁）。--noEmit 与 tsc 入口封装在脚本里：元门禁 FLAG_TOKEN 只认小写长参数，--noEmit 写进清单会被判「参数形态不对」。缺 node_modules 退 2（环境问题），类型错退 1，与内容红区分"
     }
   ],
   "manual": [],

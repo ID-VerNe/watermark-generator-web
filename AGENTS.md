@@ -69,9 +69,11 @@ python scripts/run_gates.py support         # 需要 PR 上下文的一档；本
   手改会被元门禁打红（磁盘脚本、清单、本节三者必须一致）。
 - `core.hooksPath` 指向 `.githooks`：`commit-msg` 拦文案格式与 `Co-Authored-By:`，
   并调 `scripts/check_commit_messages.py` 扫 commit message 里的敏感值；
-  `pre-push` 跑 static 分片。换机器后重设一次：`git config core.hooksPath .githooks`。
+  `pre-push` 跑带 `prePush` 标记的分片（static + typecheck）。**改代码前先 `npm install`**：
+  typecheck 分片需要 `node_modules`，未装依赖时该条退 2（环境问题），push 会被拦住。
+  换机器后重设一次：`git config core.hooksPath .githooks`。
 - `pre-push` 的 `SKIP_GATES=1` **仅用于钩子自身故障**（例如钩子在当前 shell 下跑不起来），
-  它会打印醒目横幅但跳过 static 门禁。使用后必须在 PR 正文说明原因，并附上手动执行
+  它会打印醒目横幅但跳过 prePush 门禁。使用后必须在 PR 正文说明原因，并附上手动执行
   `python scripts/run_gates.py ci` 的原始输出；它不是「门禁红了赶时间」的通行证。
   绕过会写入 `$(git rev-parse --git-common-dir)/skip-gates.log`（所有 worktree 共用一份），用于事后审计。
 
@@ -88,8 +90,9 @@ python scripts/run_gates.py support         # 需要 PR 上下文的一档；本
 | 5 | `static` | `check_line_refs.py` | `python scripts/check_line_refs.py` | 被跟踪文件（md/java/kt/kts/py，含代码注释）不许写物理行号（AGENTS.md §2 第 10 条）：行号随上方插行漂移，而文档与注释都没有编译门禁能发现。扩展名白名单避开主机端口与章节号；md 跳围栏代码块（issue/PR 模板里的行号示例属一次性上下文）与 docs/archive/ 冻结证据（失效是预期），代码类型不剥围栏；门禁自身的测试夹具按精确路径排除（夹具必须字面含违规形态才能验证判红），不做值级白名单；裸冒号数字误报不可控，不进这条门禁 |
 | 6 | `static` | `py_compile` | `python -m compileall -q scripts` | scripts/ 下所有 Python 必须能编译。门禁脚本语法崩在 CI 里才发现代价最高 |
 | 7 | `static` | `check_sensitive.py` | `python scripts/check_sensitive.py --check` | 敏感信息门禁：配对 GUID 及其 hex/14 位去横线/4-4-4-2 重分组/Base64/URL 编码、序列号、内网 IP、私人路径、私有仓库标识、通用密钥形态。命中即阻断。公开示例值走脚本内 ALLOWLIST，只按「类别 + 精确值」放行，不做网段/通配；其余行内豁免必须带具体理由。--fix 才改写，--warn 只用于排查基线 |
+| 8 | `typecheck` | `check_typescript.py` | `python scripts/check_typescript.py` | 类型检查（tsc --noEmit）：esbuild 的 build 不做类型检查，类型契约缺陷合入前不可见（issue #3 的 fontUrl 就是这样漏的，issue #11 立此门禁）。--noEmit 与 tsc 入口封装在脚本里：元门禁 FLAG_TOKEN 只认小写长参数，--noEmit 写进清单会被判「参数形态不对」。缺 node_modules 退 2（环境问题），类型错退 1，与内容红区分 |
 
-共 7 个 CI 门禁，分 1 个分片（static 7）；manual 0、support 3 见 `scripts/gates.json`。
+共 8 个 CI 门禁，分 2 个分片（static 7、typecheck 1）；manual 0、support 3 见 `scripts/gates.json`。
 <!-- gates:ci:end -->
 
 ### 0.2 证据与验证纪律
@@ -241,11 +244,12 @@ python scripts/run_gates.py support         # 需要 PR 上下文的一档；本
 | `scripts/check_sensitive.py` | 敏感信息门禁（`ci` 档 static 分片）：GUID / 序列号 / 内网 IP / 私人路径 / 私有仓库标识 / 密钥形态 |
 | `scripts/check_no_vendored.py` | 中间产物不入库 + 无 >5 MB 大文件（`ci` 档 static 分片） |
 | `scripts/check_doc_links.py` | 被跟踪 md 的相对链接可达 + `AGENTS.md` §6 索引表反向校验（`ci` 档 static 分片） |
+| `scripts/check_typescript.py` | 类型检查门禁（`ci` 档 typecheck 分片）：`tsc --noEmit`；缺 `node_modules` 退 2、类型错退 1；`--self-test` 真跑 tsc |
 | `scripts/_common.py` | 门禁共享层：子进程 / `gh` JSON / `git ls-files -z` / 门禁链判定 / 退出码常量 |
 | `scripts/run_gates.py` | 门禁执行器（读 `gates.json` 跑档位） |
 | `scripts/resolve_python.sh` | 门禁链上 Python 解释器的唯一解析（钩子用） |
 | `.githooks/commit-msg` | 提交信息格式与敏感值检查钩子 |
-| `.githooks/pre-push` | push 前跑 static 分片门禁（`SKIP_GATES=1` 会留审计日志） |
+| `.githooks/pre-push` | push 前跑带 `prePush` 标记的分片门禁（`SKIP_GATES=1` 会留审计日志） |
 | `.github/workflows/ci.yml` | CI：同一份 `gates.json`，`pull_request` 上跑 support 档 |
 | `.github/ISSUE_TEMPLATE/bug_report.md` | Bug 报告模板（四要素） |
 | `.github/ISSUE_TEMPLATE/feature_request.md` | 功能建议模板 |
