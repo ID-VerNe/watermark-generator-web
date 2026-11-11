@@ -264,11 +264,15 @@ export default function WatermarkForm({
             <div>
               <label className={`${LABEL_CLASS} mb-2`}>Left Logo (Custom)</label>
               <div className="flex items-center space-x-4">
-                <label className="cursor-pointer bg-white dark:bg-gray-700 py-2 px-3 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm text-sm leading-4 font-medium text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
-                  <span>Upload Logo</span>
+                <label
+                  htmlFor="leftLogoUpload"
+                  className="cursor-pointer bg-white dark:bg-gray-700 py-2 px-3 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm text-sm leading-4 font-medium text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-600 focus-within:outline-none focus-within:ring-2 focus-within:ring-offset-2 focus-within:ring-indigo-500"
+                >
+                  <span>Upload Left Logo</span>
                   <input
+                    id="leftLogoUpload"
                     type="file"
-                    className="hidden"
+                    className="sr-only"
                     accept="image/*"
                     onChange={handleLeftLogoUpload}
                   />
@@ -309,11 +313,15 @@ export default function WatermarkForm({
             <div>
               <label className={`${LABEL_CLASS} mb-2`}>Right Logo (Custom)</label>
               <div className="flex items-center space-x-4">
-                <label className="cursor-pointer bg-white dark:bg-gray-700 py-2 px-3 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm text-sm leading-4 font-medium text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
-                  <span>Upload Logo</span>
+                <label
+                  htmlFor="signatureLogoUpload"
+                  className="cursor-pointer bg-white dark:bg-gray-700 py-2 px-3 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm text-sm leading-4 font-medium text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-600 focus-within:outline-none focus-within:ring-2 focus-within:ring-offset-2 focus-within:ring-indigo-500"
+                >
+                  <span>Upload Right Logo</span>
                   <input
+                    id="signatureLogoUpload"
                     type="file"
-                    className="hidden"
+                    className="sr-only"
                     accept="image/*"
                     onChange={handleSignatureLogoUpload}
                   />
