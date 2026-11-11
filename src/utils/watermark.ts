@@ -15,7 +15,7 @@ const LOGO_TEXT_GAP = 10;
 export interface WatermarkResources {
   locationLogoUrl?: string;
   signatureLogoUrl?: string;
-  fontUrl?: string;
+  fontUrl: string;
 }
 
 /**
