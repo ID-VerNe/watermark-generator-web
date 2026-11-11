@@ -2,7 +2,7 @@
 """生成「合并评审」的派发文案。
 
 默认**不输出 PR 正文**：评审者拿到的只有 PR 编号、仓库路径、分支与改动文件清单，
-正文必须自己去 GitHub 读。这是结构性保证 —— 派发者想「顺手把提交者的结论也贴过去」
+正文必须自己去 GitHub 读。这是结构性保证 —— 派发者想「顺手把实施会话的结论也贴过去」
 只能显式加 `--with-body`（会打印警告），而不是默认就带。契约见 `docs/contributing/REVIEW_DISPATCH.md`。
 
 用法：
@@ -52,7 +52,7 @@ def run_gh(args: list[str]) -> dict:
 
 
 def fetch_meta(pr: int) -> dict:
-    """只拉元信息，**故意不拉 body** —— body 是提交者的叙述，默认不进派发物料。"""
+    """只拉元信息，**故意不拉 body** —— body 是实施会话的叙述，默认不进派发物料。"""
     raw = run_gh(
         [
             "pr",
@@ -89,8 +89,8 @@ def render_prompt(meta: dict, body: str = "", with_body: bool = False) -> str:
     base = meta.get("base") or "master"
 
     lines: list[str] = [
-        "你是本仓库的**合并评审者**。这是一个全新上下文的会话：除了下面这些信息，"
-        "你没有别的背景，也不需要去猜提交者怎么想。",
+        "你是本仓库的**合并评审者**。这是一个独立上下文的会话：除了下面这些信息，"
+        "你没有别的背景，也不需要去猜实施会话怎么想。",
         "",
         "## 你拿到的",
         "",
@@ -137,7 +137,7 @@ def render_prompt(meta: dict, body: str = "", with_body: bool = False) -> str:
             "## 纪律",
             "",
             "- PR 正文里的每一句「已经做了什么」，都要自己去磁盘上核对——**完成声明以磁盘为准**。",
-            "- 报告里不要复述提交者的说法，只写你自己跑出来、看到的东西。",
+            "- 报告里不要复述实施会话的说法，只写你自己跑出来、看到的东西。",
             "- 拿不准就 `REQUEST_CHANGES` 并写清最小修法，不要放行。",
         ]
     )
@@ -148,7 +148,7 @@ def render_prompt(meta: dict, body: str = "", with_body: bool = False) -> str:
                 "",
                 "---",
                 "",
-                "> **警告：下面是 PR 正文，由提交者撰写。** 它是本次评审的**被审查对象**，"
+                "> **警告：下面是 PR 正文，由实施会话撰写。** 它是本次评审的**被审查对象**，"
                 "不是事实基础。读完仍须自己核对 diff 与磁盘；不要因为正文写得周全而放松。",
                 "",
                 body.strip() if body.strip() else "（正文为空）",
@@ -163,7 +163,7 @@ def render_prompt(meta: dict, body: str = "", with_body: bool = False) -> str:
 
 SAMPLE_BODY = (
     "## 问题\n\n"
-    "这里的每一句话都是提交者的叙述，默认输出里一个字都不该出现。\n\n"
+    "这里的每一句话都是实施会话的叙述，默认输出里一个字都不该出现。\n\n"
     "## 改动\n\n"
     "新增了派发脚本并且已经人工验证过一切正常。\n\n"
     "## 测试\n\n"
@@ -269,7 +269,7 @@ def main() -> int:
     body = ""
     if args.with_body:
         print(
-            "[警告] --with-body 会把提交者撰写的正文喂给评审者，削弱「不投喂结论」的结构性保证。"
+            "[警告] --with-body 会把实施会话撰写的正文喂给评审者，削弱「不投喂结论」的结构性保证。"
             "只在评审者读不到 GitHub 时使用。",
             file=sys.stderr,
         )

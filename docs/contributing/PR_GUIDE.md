@@ -166,7 +166,7 @@ type/<issue 号>-p<字母>-<slug>             # 多分节，如 feat/7-pb-progre
 2. **无冲突**：GitHub 显示 `MERGEABLE` / `CLEAN`；有冲突不强行合——
    在 worktree 里 `git merge origin/master` 解决，重跑门禁后再推。
 3. 适用时有 `## 基线验证` 段。
-4. **合并评审结论为 `APPROVE`**：由全新上下文的 subagent 出具，见下节。
+4. **合并评审结论为 `APPROVE`**：由独立上下文的会话出具，见下节。
 5. **合完立刻核对目标 issue 没被意外关闭**：贴合并前后时间线，确认关单发生在回签之后，
    而不是 merge 后几秒：
 
