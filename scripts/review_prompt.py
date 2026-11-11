@@ -119,6 +119,21 @@ def render_prompt(meta: dict, body: str = "", with_body: bool = False) -> str:
         lines.append("")
         lines.append("涉及门禁链：否（不需要走门禁改动的独立复核清单）。")
 
+    # 结论落点按是否命中门禁链分叉（issue #15）：通用落点是评论；门禁链 PR 另有
+    # 第二落点——正文 `## 门禁改动` 段末尾。口径唯一归属见 REVIEW_DISPATCH.md 的「结论格式」。
+    if hits:
+        conclusion_step = (
+            "5. **出结论**：`APPROVE` 或 `REQUEST_CHANGES`，附证据（门禁原始输出、"
+            "`文件:行号`）。没有证据的结论无效。本 PR 命中门禁链，结论**两处都写**："
+            "一是 PR 评论，二是 PR 正文 `## 门禁改动` 段**末尾**（要求见 PR_GUIDE.md"
+            "「门禁改动与独立复核」）。"
+        )
+    else:
+        conclusion_step = (
+            "5. **出结论**：`APPROVE` 或 `REQUEST_CHANGES`，附证据（门禁原始输出、"
+            "`文件:行号`）。没有证据的结论无效。结论写进 PR 评论。"
+        )
+
     lines.extend(
         [
             "",
@@ -131,8 +146,7 @@ def render_prompt(meta: dict, body: str = "", with_body: bool = False) -> str:
             "3. **读契约**：`docs/contributing/REVIEW_DISPATCH.md`，按其中的「评审者必做清单」逐条走。",
             f"4. **自己复跑门禁**：在这个 worktree 里跑 `python scripts/run_gates.py ci`，"
             "把原始输出贴进结论。不采信 PR 正文里的绿，也不采信「CI 是绿的」。",
-            "5. **出结论**：`APPROVE` 或 `REQUEST_CHANGES`，附证据（门禁原始输出、"
-            "`文件:行号`）。没有证据的结论无效。",
+            conclusion_step,
             "",
             "## 纪律",
             "",
@@ -232,6 +246,23 @@ def self_test() -> int:
     check(
         "命中门禁链时明确标注",
         "涉及门禁链：是" in gate_plain and "独立复核" in gate_plain,
+    )
+
+    # 6b. 结论落点：非门禁 PR 只落评论，且不得要求第二落点（issue #15）
+    check(
+        "非门禁 PR 结论只落评论",
+        "结论写进 PR 评论" in plain
+        and "两处都写" not in plain
+        and "段**末尾**" not in plain,
+    )
+
+    # 6c. 结论落点：门禁链 PR 必须点明第二落点（评论 + 正文 `## 门禁改动` 段末尾）。
+    #     删掉分叉里的落点文字（把 gate 分支写成和 else 一样）这条就会红。
+    check(
+        "门禁 PR 结论要求评论 + 正文段末尾两处",
+        "两处都写" in gate_plain
+        and "门禁改动" in gate_plain
+        and "段**末尾**" in gate_plain,
     )
 
     # 7. 逃生口带正文时必须警告
