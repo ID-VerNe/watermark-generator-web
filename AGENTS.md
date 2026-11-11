@@ -37,15 +37,15 @@
    **正文里举例一律写 `#NN` 占位**，不写具体编号——GitHub 对 PR 原始全文跑自动关闭解析，
    行内代码 / 围栏里的 closing 关键词加真实编号也会真的关掉 issue（见
    [`docs/contributing/PR_GUIDE.md`](docs/contributing/PR_GUIDE.md)「硬规则」）。
-   **合并审批权归全新上下文的 subagent**：提交者写完全部文档、门禁转绿后，
+   **合并审批权归独立上下文的会话**：实施会话写完全部文档、门禁转绿后，
    用 `python scripts/review_prompt.py --pr <号>` 生成派发文案（**不要手写**，它默认不带 PR 正文，
    「不投喂结论」靠结构保证），原样交给只拿到 PR 编号、仓库路径与分支/标题/改动文件清单的评审会话；
    它出 `APPROVE` 就直接合并（merge commit，不 squash、不 rebase），
-   不需要维护者逐 PR 人工点头。提交者不能给自己评审。契约见
+   不需要维护者逐 PR 人工点头。**产出该改动的会话不能给自己评审。** 契约见
    [`docs/contributing/REVIEW_DISPATCH.md`](docs/contributing/REVIEW_DISPATCH.md)。
-5. **合并后对账与回签**：修复者逐项核对「自述 vs 实际」（`git status`、文件存在性、门禁原始输出），
-   给行为类 issue 贴 `needs-live-verify`；由发现者或**全新上下文**的会话按 PR_GUIDE 的模板回签，
-   **回签通过才关 issue**。修复者不能给自己回签。
+5. **合并后对账与回签**：实施会话逐项核对「自述 vs 实际」（`git status`、文件存在性、门禁原始输出），
+   给行为类 issue 贴 `needs-live-verify`；由**独立上下文的回签会话**（维护者派发，或维护者本人复核）
+   按 PR_GUIDE 的模板回签，**回签通过才关 issue**。**产出该改动的会话不能给自己回签。**
 
 > 这个仓库的行为类改动大多要**浏览器里实际操作**才能验（水印渲染效果、词库持久化、
 > 文件名生成、导入导出）。所以第 5 步不是形式主义：合并只代表代码进了 `master`，
@@ -101,6 +101,16 @@ python scripts/run_gates.py support         # 需要 PR 上下文的一档；本
 - **浏览器结论必须标注环境**：浏览器与版本 / 操作系统 / 数据状态（本地词库、`localStorage` 里有什么）。
   本项目的每一条结论都强依赖这些，缺了就无法复现。
 - **红了先归因**：用 pristine HEAD 的 worktree 对照跑一遍，分清代码问题还是环境抖动，再动手。
+- **独立性锚在会话，不在账号**：本仓库所有会话共用同一个 Git 账号（`ID-VerNe`），
+  账号 / 分支 / PR 编号都不是独立性判据，GitHub 时间线上也看不出实施会话与评审 / 回签会话的区别。
+  判据是**独立上下文**——产出该改动的会话不得给自己评审或回签，评审与回签各自来自独立上下文的会话；
+  同一会话换个角色名不算。角色词一律按会话定义：**实施会话**（写 plan、改代码、开 PR 的那个会话）、
+  **评审会话**（决定合不合）、**回签会话**（决定 issue 关不关）；**发现者**指维护者本人
+  （通常由维护者操作或派发 Agent 执行）。为让 GitHub 时间线能追回会话，评审结论与回签里请写明
+  会话句柄 `角色名@<8 位短 id>`（例如 `review-9c@315b439d`），对应磁盘上的
+  `~/.claude/projects/<项目>/<父会话 id>/subagents/agent-a<角色名>-<16 位 id>.jsonl`；
+  **不要写完整 UUID**（形如 8-4-4-4-12 的父会话 id 会命中 `check_sensitive.py` 的 guid 规则判红，
+  见 `scripts/check_sensitive.py` 的 `KNOWN_EXAMPLE_UUIDS` 附近注释）。
 - **PR 正文与评论也在脱敏扫描范围内**：`support` 档的
   [`scripts/check_pr_body.py`](scripts/check_pr_body.py) 会扫 PR 正文与评论，
   且外部输入**不认行内豁免**；本机路径、内网地址、口令、序列号、配对 GUID 一律用
