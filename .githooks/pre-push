@@ -1,5 +1,5 @@
 #!/bin/sh
-# push 前跑最便宜的一档门禁（static 分片）。
+# push 前跑带 prePush 标记的分片门禁（static + typecheck）。
 #
 # 两条硬约束，都来自 issue #114 的真实故障：
 # 1. 退出码只由门禁结果决定，与输出能否写出去无关。调用方把本钩子接进提前关闭的
@@ -67,7 +67,7 @@ audit_skip() {
 if [ "${SKIP_GATES:-0}" = "1" ]; then
   say ""
   say "############################################################"
-  say "# [pre-push] 警告：SKIP_GATES=1 —— 本次推送跳过了 static 门禁！"
+  say "# [pre-push] 警告：SKIP_GATES=1 —— 本次推送跳过了 prePush 门禁！"
   say "# 这次 push 未经任何门禁校验。SKIP_GATES 只允许用于钩子自身故障；"
   say "# 事后必须在 PR 正文说明原因，并附上手动执行"
   say "#   python scripts/run_gates.py ci"
@@ -79,7 +79,7 @@ if [ "${SKIP_GATES:-0}" = "1" ]; then
   exit 0
 fi
 
-say "[pre-push] 跑 static 门禁……"
+say "[pre-push] 跑 prePush 分片门禁……"
 
 # 解释器与分片名都收敛（issue #205）：解释器走共享探针（找不到即拒绝，与 commit-msg
 # 同口径，不靠 shell 的「命令不存在」裸错）；跑哪档由 gates.json 的 prePush 标记决定，
@@ -105,5 +105,5 @@ if [ "$gate_status" -ne 0 ]; then
   exit 1
 fi
 
-say "[pre-push] static 门禁全绿"
+say "[pre-push] prePush 分片门禁全绿"
 exit 0
