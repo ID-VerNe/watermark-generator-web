@@ -22,7 +22,7 @@
 2. **写 plan 追评**：探索结论 + 方案 + 明确不做 + 验证方式。
 3. **开 worktree 改代码**：`git worktree add ../watermark-<issue> -b type/<issue>-<slug> master`。
 4. **开 PR**：正文分段齐全，行为类用 `Refs #NN`、纯文档/重构用 `Closes #NN`；
-   合并审批由全新上下文的 subagent 评审。
+   合并审批由独立上下文的会话评审。
 5. **合并后对账与回签**：行为类等浏览器验证通过才关 issue。
 
 ## 门禁怎么跑
