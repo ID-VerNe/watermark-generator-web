@@ -19,6 +19,25 @@ export interface WatermarkResources {
 }
 
 /**
+ * Fit an image to a target width without letting the height overflow `maxHeight`.
+ *
+ * Logo width is user-driven, so a tall image (aspect ratio greater than the box)
+ * would otherwise scale past the top of the canvas and get clipped (issue #6).
+ * When the width-driven height exceeds the box, the width is recomputed from
+ * `maxHeight` instead, keeping the whole image inside the box.
+ */
+function fitLogoInBox(
+  image: HTMLImageElement,
+  targetWidth: number,
+  maxHeight: number,
+): { width: number; height: number } {
+  if (maxHeight <= 0) return { width: 0, height: 0 };
+  const height = image.height * (targetWidth / image.width);
+  if (height <= maxHeight) return { width: targetWidth, height };
+  return { width: image.width * (maxHeight / image.height), height: maxHeight };
+}
+
+/**
  * Draw the watermark onto the given canvas.
  *
  * Layout:
@@ -76,17 +95,23 @@ export async function drawWatermarkCanvas(
 
   let shotOnBlockBottom = shotOnY;
   if (signatureLogo) {
-    const logoWidth = signatureLogoWidth;
-    const logoHeight = signatureLogo.height * (logoWidth / signatureLogo.width);
-    const logoX = CANVAS_WIDTH - PADDING - logoWidth;
-    const logoY =
+    // Bottom edge of the logo block — independent of the logo's height, so the
+    // clamp below never moves it. Capped at PADDING so a tall logo stays inside
+    // the canvas instead of being drawn above the top edge (issue #6).
+    const logoBottom =
       shotOnY -
       shotOnTextHeight -
-      LOGO_TEXT_GAP -
-      logoHeight +
+      LOGO_TEXT_GAP +
       shotOnMetrics.fontBoundingBoxDescent;
+    const { width: logoWidth, height: logoHeight } = fitLogoInBox(
+      signatureLogo,
+      signatureLogoWidth,
+      logoBottom - PADDING,
+    );
+    const logoX = CANVAS_WIDTH - PADDING - logoWidth;
+    const logoY = logoBottom - logoHeight;
     ctx.drawImage(signatureLogo, logoX, logoY, logoWidth, logoHeight);
-    shotOnBlockBottom = logoY + logoHeight;
+    shotOnBlockBottom = logoBottom;
   }
 
   // Bottom-left: "<city> · <location>" with optional location pin logo
@@ -120,8 +145,11 @@ export async function drawWatermarkCanvas(
     } else {
       baseline = CANVAS_HEIGHT - PADDING;
     }
-    const logoWidth = inputs.leftLogoWidth;
-    const logoHeight = customLeftLogo.height * (logoWidth / customLeftLogo.width);
+    const { width: logoWidth, height: logoHeight } = fitLogoInBox(
+      customLeftLogo,
+      inputs.leftLogoWidth,
+      baseline - PADDING,
+    );
     const logoY = baseline - logoHeight;
     ctx.drawImage(customLeftLogo, PADDING, logoY, logoWidth, logoHeight);
   }
