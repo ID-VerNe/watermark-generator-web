@@ -107,8 +107,10 @@ python scripts/run_gates.py support         # 需要 PR 上下文的一档；本
   同一会话换个角色名不算。角色词一律按会话定义：**实施会话**（写 plan、改代码、开 PR 的那个会话）、
   **评审会话**（决定合不合）、**回签会话**（决定 issue 关不关）；**发现者**指维护者本人
   （通常由维护者操作或派发 Agent 执行）。为让 GitHub 时间线能追回会话，评审结论与回签里请写明
-  会话句柄 `角色名@<8 位短 id>`（例如 `review-9c@315b439d`），对应磁盘上的
-  `~/.claude/projects/<项目>/<父会话 id>/subagents/agent-a<角色名>-<16 位 id>.jsonl`；
+  会话句柄 `角色名@<8 位短 id>`（例如 `review-9c@315b439d`）——句柄里的短 id 是该会话
+  transcript 文件名那串 16 位十六进制 id 的前 8 位（**不是**父会话 id），磁盘上对应
+  `~/.claude/projects/<项目>/<父会话 id>/subagents/agent-a<角色名>-<16 位 id>.jsonl`，
+  用 `find . -path "*subagents/agent-a<角色名>-<8 位短 id>*"` 即可定位，无需先知道父会话 id；
   **不要写完整 UUID**（形如 8-4-4-4-12 的父会话 id 会命中 `check_sensitive.py` 的 guid 规则判红，
   见 `scripts/check_sensitive.py` 的 `KNOWN_EXAMPLE_UUIDS` 附近注释）。
 - **PR 正文与评论也在脱敏扫描范围内**：`support` 档的
